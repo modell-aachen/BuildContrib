@@ -395,8 +395,8 @@ sub new {
         }
         print STDERR <<ERROR;
 
-SVN keword based version string detected.  \$Date or \$Rev detected.
-SVN revision strings are no longer supported.
+\$VERSION string containing \$Date or \$Rev detected.
+Keyword-based \$VERSION strings are no longer supported.
 Please update to a real Perl version string.
 
 ERROR
@@ -882,7 +882,12 @@ sub cp {
         print 'cp ' . $from . ' ' . $to . "\n";
     }
     unless ( $this->{-n} ) {
-        if ( -d $from ) {
+        if ( -l $from ) {
+            my $link = readlink($from);
+            symlink( $link, $to )
+              || warn "Warning: Failed to create link from $to to $link: $!";
+        }
+        elsif ( -d $from ) {
             unless ( -e $to ) {
                 mkdir($to) || warn 'Warning: Failed to make ' . $to . ': ' . $!;
             }

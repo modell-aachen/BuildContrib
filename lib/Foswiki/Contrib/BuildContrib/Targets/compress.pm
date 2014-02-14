@@ -15,6 +15,8 @@
 #
 package Foswiki::Contrib::Build;
 
+use strict;
+
 my %minifiers;    # functions used to minify
 
 my @compressFilters = (
@@ -60,8 +62,17 @@ sub target_compress {
 sub _build_js {
     my ( $this, $to ) = @_;
 
+    # First try uglify
     if ( !$minifiers{js} ) {
-        my $yui = _haveYUI();
+        if ( $this->_haveuglifyjs() ) {
+            $minifiers{js} = sub {
+                return $this->_uglifyjs( @_, 'js' );
+            };
+        }
+    }
+
+    if ( !$minifiers{js} ) {
+        my $yui = $this->_haveYUI();
 
         if ($yui) {
             $minifiers{js} = sub {
@@ -104,8 +115,17 @@ sub _build_js {
 sub _build_css {
     my ( $this, $to ) = @_;
 
+    # First try cssmin
     if ( !$minifiers{css} ) {
-        my $yui = _haveYUI();
+        if ( $this->_havecssmin() ) {
+            $minifiers{css} = sub {
+                return $this->_cssmin( @_, 'css' );
+            };
+        }
+    }
+
+    if ( !$minifiers{css} ) {
+        my $yui = $this->_haveYUI();
 
         if ($yui) {
             $minifiers{css} = sub {
@@ -281,7 +301,8 @@ sub _yuiMinify {
     my $cmd;
 
     if ( $cmdtype == 2 ) {
-        $cmd = "java -jar $basedir/tools/yuicompressor.jar --type $type $from";
+        $cmd =
+"java -jar $this->{basedir}/tools/yuicompressor.jar --type $type $from";
     }
     else {
         $cmd = "yui-compressor --type $type $from";
@@ -289,6 +310,50 @@ sub _yuiMinify {
     unless ( $this->{-n} ) {
         $cmd .= " -o $to";
     }
+
+    warn "$cmd\n";
+    my $out = `$cmd`;
+    $ENV{'LC_ALL'} = $lcall;
+    return $out;
+}
+
+sub _cssmin {
+    my ( $this, $from, $to ) = @_;
+    my $lcall = $ENV{'LC_ALL'};
+    my $cmd;
+
+    $cmd = "cssmin $from";
+
+    warn "$cmd\n";
+    my $out = `$cmd`;
+
+    unless ( $this->{-n} ) {
+        if ( open( F, '>', $to ) ) {
+            local $/ = undef;
+            print F $out;
+            close(F);
+        }
+        else {
+            die "$to: $!";
+        }
+    }
+
+    $ENV{'LC_ALL'} = $lcall;
+    return $out;
+}
+
+sub _uglifyjs {
+    my ( $this, $from, $to ) = @_;
+    my $lcall = $ENV{'LC_ALL'};
+    my $cmd;
+
+    $cmd = "uglifyjs $from";
+
+    unless ( $this->{-n} ) {
+        $cmd .= " -o $to";
+    }
+
+    $cmd .= ' --ascii';
 
     warn "$cmd\n";
     my $out = `$cmd`;
@@ -305,19 +370,58 @@ return 2 if we have YUI as a jar file in tools
 =cut
 
 sub _haveYUI {
+    my $this   = shift;
     my $info   = `yui-compressor -h 2>&1`;
     my $result = 0;
 
     if ( not $? ) {
         $result = 1;
     }
-    elsif ( -e "$basedir/tools/yuicompressor.jar" ) {
+    elsif ( -e "$this->{basedir}/tools/yuicompressor.jar" ) {
 
         # Do we have java?
         $info = `java -version 2>&1` || '';
         if ( not $? ) {
             $result = 2;
         }
+    }
+
+    return $result;
+}
+
+=begin TML
+
+---++++ _haveuglifyjs
+return 1 if we have uglify as a command uglify 
+
+=cut
+
+sub _haveuglifyjs {
+    my $this   = shift;
+    my $info   = `echo ''|uglifyjs 2>&1`;
+    my $result = 0;
+
+    if ( not $? ) {
+        $result = 1;
+    }
+
+    return $result;
+}
+
+=begin TML
+
+---++++ _havecssmin
+return 1 if we have cssmin as a command
+
+=cut
+
+sub _havecssmin {
+    my $this   = shift;
+    my $info   = `cssmin -h 2>&1`;
+    my $result = 0;
+
+    if ( not $? ) {
+        $result = 1;
     }
 
     return $result;
