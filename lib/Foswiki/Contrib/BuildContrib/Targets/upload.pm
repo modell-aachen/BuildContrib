@@ -223,7 +223,7 @@ END
         # SMELL: would be better to use Foswiki::Meta to do this
         foreach my $line ( split( /\n/, $response->content() ) ) {
 
-            if ( $line =~ m/%META:FIELD{name="(.*?)".*?value="(.*?)"/ ) {
+            if ( $line =~ m/%META:FIELD\{name="(.*?)".*?value="(.*?)"/ ) {
                 my $name = $1;
                 my $val  = $2;
 
@@ -235,7 +235,7 @@ END
                     $newform{$name} = $val;
                 }
             }
-            elsif ( $line =~ /META:FORM{name="PackageForm/ ) {
+            elsif ( $line =~ /META:FORM\{name="PackageForm/ ) {
                 $newform{formtemplate} = 'PackageForm';
                 $formExists = 1;
             }
@@ -380,7 +380,7 @@ sub _uploadTopic {
 
     $form->{validation_key} = $this->_strikeone( $userAgent, $response );
 
-    $form->{text} =~ s/^%META:TOPICINFO{.*?\n//;    # Delete any old topicinfo
+    $form->{text} =~ s/^%META:TOPICINFO\{.*?\n//;    # Delete any old topicinfo
     my $url =
 "$this->{UPLOADTARGETSCRIPT}/save$this->{UPLOADTARGETSUFFIX}/$this->{UPLOADTARGETWEB}/$topic";
     $form->{text} = <<EXTRA. $form->{text};
